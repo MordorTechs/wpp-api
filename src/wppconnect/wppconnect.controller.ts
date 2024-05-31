@@ -3,6 +3,7 @@ import { WppConnectService } from "./wppconnect.service";
 import { Response } from "express";
 import { ConfigService } from "@nestjs/config";
 
+
 @Controller("wppconnect")
 export class WppConnectController {
   constructor(

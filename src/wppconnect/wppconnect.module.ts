@@ -3,6 +3,8 @@ import { HttpModule } from '@nestjs/axios';
 import { ConfigModule } from '@nestjs/config';
 import { WppConnectService } from './wppconnect.service';
 import { WppConnectController } from './wppconnect.controller';
+import { StartService } from './start.service';
+import { HandleResponseService } from './handle-response.service';
 
 /**
  * Represents the WppConnect module.
@@ -10,7 +12,8 @@ import { WppConnectController } from './wppconnect.controller';
  */
 @Module({
   imports: [ConfigModule, HttpModule],
-  providers: [WppConnectService],
+  providers: [WppConnectService, StartService,
+    HandleResponseService,],
   controllers: [WppConnectController],
 })
 export class WppConnectModule {}

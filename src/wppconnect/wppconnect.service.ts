@@ -1,6 +1,6 @@
-import { Injectable} from "@nestjs/common";
+import { Injectable } from '@nestjs/common';
 import axios from 'axios';
-import { create, CreateOptions, Whatsapp } from "@wppconnect-team/wppconnect";
+import { create, Whatsapp } from '@wppconnect-team/wppconnect';
 import * as fs from 'fs';
 
 @Injectable()
@@ -9,10 +9,6 @@ export class WppConnectService {
   private qrCode: string;
   private qrCodeGenerated = false;
 
-  /**
-   * Connects to the WhatsApp service.
-   * @returns A Promise that resolves to a boolean indicating whether the connection was successful.
-   */
   async connect(): Promise<boolean> {
     const chromePath = process.env.CHROME_PATH;
     let connected = false;
@@ -31,20 +27,11 @@ export class WppConnectService {
           catchQR: async (base64Qr, asciiQR) => {
             this.qrCode = base64Qr;
             this.qrCodeGenerated = true;
-            this.getQrCode();
+            this.sendQrCodeNotification();
             setTimeout(() => {
               this.qrCodeGenerated = false;
               // Notificar a aplicação Laravel que o QRCode expirou
-              axios.post('http://exemple-dash.com/endpoint', {
-                message: 'QRCode expirou',
-                session: "session-name"
-              })
-              .then(response => {
-                console.log('Notificação enviada com sucesso');
-              })
-              .catch(error => {
-                console.error('Erro ao enviar notificação:', error);
-              });
+              this.sendQrCodeExpirationNotification();
             }, 60000);
           },
         });
@@ -52,7 +39,7 @@ export class WppConnectService {
       } catch (error) {
         console.error('Erro ao conectar:', error);
         attempts++;
-        console.log('Tentativa ' + attempts+'/'+maxAttempts);
+        console.log('Tentativa ' + attempts + '/' + maxAttempts);
         if (attempts >= maxAttempts) {
           console.error('Número máximo de tentativas atingido');
           break;
@@ -62,21 +49,48 @@ export class WppConnectService {
     return connected;
   }
 
-  /**
-   * Retrieves the QR code for the WhatsApp connection.
-   * @returns The QR code as a string.
-   */
+  getClient(): Whatsapp {
+    if (!this.client) {
+      throw new Error("Client is not connected");
+    }
+    return this.client;
+  }
+
+  private sendQrCodeNotification() {
+    axios.post('http://exemple-dash.com/endpoint', {
+      message: 'QR Code gerado',
+      session: "session-name",
+      qrCodeUrl: this.getQrCodeUrl()
+    })
+      .then(response => {
+        console.log('Notificação enviada com sucesso');
+      })
+      .catch(error => {
+        console.error('Erro ao enviar notificação:', error);
+      });
+  }
+
+  private sendQrCodeExpirationNotification() {
+    axios.post('http://exemple-dash.com/endpoint', {
+      message: 'QR Code expirou',
+      session: "session-name"
+    })
+      .then(response => {
+        console.log('Notificação de expiração enviada com sucesso');
+      })
+      .catch(error => {
+        console.error('Erro ao enviar notificação de expiração:', error);
+      });
+  }
+
   getQrCode(): string {
-    console.log("QR Gerado");
     return this.qrCode;
   }
-  
-  /**
-   * Sends a message to a phone number using the connected client.
-   * @param phone The phone number to send the message to.
-   * @param text The text message to send.
-   * @returns A promise that resolves to an object with the success status and message details.
-   */
+
+  getQrCodeUrl(): string {
+    return `data:image/png;base64,${this.qrCode}`;
+  }
+
   async sendMessage(phone: string, text: string): Promise<any> {
     try {
       if (!this.client) {
